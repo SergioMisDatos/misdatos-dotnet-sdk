@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>MisDatosSDK</RootNamespace>
+    <AssemblyName>MisDatosSDK</AssemblyName>
+    <Description>SDK puro en .NET para la API de MisDatos</Description>
+    <Authors>SergioMisDatos</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
