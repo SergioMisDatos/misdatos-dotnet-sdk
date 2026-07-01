@@ -29,38 +29,37 @@ namespace MisDatosSDK
 
         public bool conectar()
         {
-            ultimomensajeerror = "";
+            UltimoMensajeError = "";
             bool bresultado = false;
-        
-            if (string.IsNullOrEmpty(password))
+    
+            if (string.IsNullOrEmpty(Password))
             {
-                ultimomensajeerror = "Debe asignar un token antes de conectar";
+                UltimoMensajeError = "Debe asignar un token antes de conectar";
                 return false;
             }
-        
+    
             try
             {
                 // 1 y 2. Configuramos el manejador base y la estrategia de reintentos nativa
                 var httpClientHandler = new HttpClientHandler();
                 var retryHandler = new RetryDelegatingHandler(httpClientHandler, maxRetries: 3, backoffFactorSeconds: 0.5);
-        
+    
                 // 3. Instanciamos la sesión (HttpClient) inyectando el adaptador de reintentos
                 _service = new HttpClient(retryHandler);
-        
+    
                 // 4. Actualizamos los headers
-                _service.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", $"{usuario} {password}");
+                _service.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", $"{Usuario} {Password}");
                 _service.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 
                 bresultado = true;
             }
             catch (Exception e)
             {
-                ultimomensajeerror = $"Error al preparar conexión API: {e.Message}";
+                UltimoMensajeError = $"Error al preparar conexión API: {e.Message}";
             }
-        
+    
             return bresultado;
         }
-
         
         public float MdSumarV01(float numero1 = 0, float numero2 = 0)
         {
