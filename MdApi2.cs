@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MisDatosSDK
 {
@@ -25,32 +27,41 @@ namespace MisDatosSDK
 
         public MdApi2() { }
 
-        public bool Conectar()
+        public bool conectar()
         {
-            UltimoMensajeError = "";
-            if (string.IsNullOrEmpty(Password))
+            ultimomensajeerror = "";
+            bool bresultado = false;
+        
+            if (string.IsNullOrEmpty(password))
             {
-                UltimoMensajeError = "Debe asignar un token antes de conectar";
+                ultimomensajeerror = "Debe asignar un token antes de conectar";
                 return false;
             }
-
+        
             try
             {
-                if (_service == null) _service = new HttpClient();
-                
-                _service.DefaultRequestHeaders.Clear();
-                _service.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", $"{Usuario} {Password}");
+                // 1 y 2. Configuramos el manejador base y la estrategia de reintentos nativa
+                var httpClientHandler = new HttpClientHandler();
+                var retryHandler = new RetryDelegatingHandler(httpClientHandler, maxRetries: 3, backoffFactorSeconds: 0.5);
+        
+                // 3. Instanciamos la sesión (HttpClient) inyectando el adaptador de reintentos
+                _service = new HttpClient(retryHandler);
+        
+                // 4. Actualizamos los headers
+                _service.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", $"{usuario} {password}");
                 _service.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                 
-                return true;
+                bresultado = true;
             }
             catch (Exception e)
             {
-                UltimoMensajeError = $"Error al preparar conexión API: {e.Message}";
-                return false;
+                ultimomensajeerror = $"Error al preparar conexión API: {e.Message}";
             }
+        
+            return bresultado;
         }
 
+        
         public float MdSumarV01(float numero1 = 0, float numero2 = 0)
         {
             UltimoMensajeError = "";
@@ -218,6 +229,60 @@ namespace MisDatosSDK
             catch { }
             
             return null;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+// CLASE DE APOYO: Emula el comportamiento de urllib3.util.retry.Retry
+// Colocar al final del archivo, fuera de la clase MdApi2
+// -------------------------------------------------------------------------
+public class RetryDelegatingHandler : DelegatingHandler
+    {
+        private readonly int _maxRetries;
+        private readonly double _backoffFactorSeconds;
+    
+        public RetryDelegatingHandler(HttpMessageHandler innerHandler, int maxRetries = 3, double backoffFactorSeconds = 0.5)
+            : base(innerHandler)
+        {
+            _maxRetries = maxRetries;
+            _backoffFactorSeconds = backoffFactorSeconds;
+        }
+    
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            HttpResponseMessage response = null;
+    
+            for (int i = 0; i <= _maxRetries; i++)
+            {
+                try
+                {
+                    response = await base.SendAsync(request, cancellationToken);
+                    
+                    if (response.IsSuccessStatusCode)
+                    {
+                        return response; // Si fue exitosa, no reintentamos
+                    }
+    
+                    int statusCode = (int)response.StatusCode;
+                    // Códigos a forzar reintento
+                    if (statusCode != 429 && statusCode != 500 && statusCode != 502 && statusCode != 503 && statusCode != 504)
+                    {
+                        return response;
+                    }
+                }
+                catch (Exception ex) when (ex is TaskCanceledException || ex is HttpRequestException)
+                {
+                    if (i == _maxRetries) throw;
+                }
+    
+                if (i < _maxRetries)
+                {
+                    double delaySeconds = _backoffFactorSeconds * Math.Pow(2, i);
+                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
+                }
+            }
+    
+            return response;
         }
     }
 }
