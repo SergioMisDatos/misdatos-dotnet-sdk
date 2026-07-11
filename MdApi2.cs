@@ -411,7 +411,7 @@ namespace MisDatosSDK
 
                     int statusCode = (int)response.StatusCode;
                     // Códigos para forzar el reintento (Equivalente al status_forcelist de Python)
-                    if (statusCode != 429 && statusCode != 500 && statusCode != 502 && statusCode != 503 && statusCode != 504)
+                    if (statusCode != 500 && statusCode != 502 && statusCode != 503 && statusCode != 504)
                     {
                         return response;
                     }
